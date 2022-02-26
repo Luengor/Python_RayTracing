@@ -5,8 +5,8 @@ import cv2
 
 ## Global variables
 size = 1024, 1024
-fov = 90    # I know this is broken, but I can't prove it
-fov2px = (fov * np.pi / 180) / (size[0] - 1)
+fov = 90    # It actually was broken, but I have no idea if this is correct now :)
+fov2px = np.tan(np.pi * 0.5 * fov / 180) / (size[0] - 1)
 image = np.zeros(shape=(size[1], size[0], 3), dtype=np.uint8)
 
 ## Scene variables
