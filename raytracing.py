@@ -5,7 +5,7 @@ import cv2
 
 ## Global variables
 size = 1024, 1024
-fov = 60    # fov broken?
+fov = 90    # I know this is broken, but I can't prove it
 fov2px = (fov * np.pi / 180) / (size[0] - 1)
 image = np.zeros(shape=(size[1], size[0], 3), dtype=np.uint8)
 
@@ -14,15 +14,17 @@ image = np.zeros(shape=(size[1], size[0], 3), dtype=np.uint8)
 camera = np.array([[0, 1, 0], [0, -0.2, 1], [0, 1, 0], [1, 0, 0]], dtype=np.float32)
 objects = [raylib.sphere([1, 1, 5], 1), raylib.plane([0, 0, 0], [0, 1, 0]), raylib.aabb([-0.25, 0, 2.25], [-0.75, 1, 2.75])]
 
+## Sines calculations
+# We actually only need half of them, as they can be reused
+x_sines = np.array(np.sin([(x - size[0] * 0.5 + 0.5) * fov2px for x in range(size[0])]), dtype=np.float32)
+y_sines = np.array(np.sin([-(y - size[1] * 0.5 + 0.5) * fov2px for y in range(size[1])]), dtype=np.float32)
+
 ## Main loop
-# (The calculation of sines and cosines could/should be optimized because a lot
-#  of them are calculated multiple times)
 for y in range(size[1]):
-    y_angle = -(y - size[1] * 0.5 + 0.5) * fov2px
     for x in range(size[0]):
-        x_angle = (x - size[0] * 0.5 + 0.5) * fov2px
+        ## Calculate the ray
         ray_origin = camera[0]
-        ray_dir = np.array(camera[1] + np.sin(y_angle) * camera[2] + np.sin(x_angle) * camera[3], dtype=np.float32)
+        ray_dir = np.array(camera[1] + y_sines[y] * camera[2] + x_sines[x] * camera[3], dtype=np.float32)
         ray_dir /= np.linalg.norm(ray_dir)
 
         ## Get all hits
