@@ -7,3 +7,4 @@ Also, I am using/used this:
 https://tavianator.com/index.html  
 https://www.scratchapixel.com/index.php  
 http://lousodrome.net/blog/light/2020/07/03/intersection-of-a-ray-and-a-plane/
+https://www.cs.cornell.edu/courses/cs4620/2017sp/slides/05rt-shading.pdf

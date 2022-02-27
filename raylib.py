@@ -6,11 +6,12 @@ class ray_object(): pass
 class sphere(ray_object): pass
 class plane(ray_object): pass
 class aabb(ray_object): pass
+class light(): pass
 
 # Classes
 class ray_object:
     def __init__(self) -> None:
-        pass
+        self.color = [255, 255, 255]
     
     def intersect(self, ray_origin:np.ndarray, ray_dir:np.ndarray) -> list:
         """
@@ -20,10 +21,14 @@ class ray_object:
         pass
 
 class sphere (ray_object):
-    def __init__(self, position:np.ndarray, radius:float) -> None:
+    def __init__(self, position:np.ndarray, radius:float, **kwargs) -> None:
+        super().__init__()
         self.position = np.array(position, np.float32)
         self.radius = radius
-    
+
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
     # https://www.scratchapixel.com/code.php?id=3&origin=/lessons/3d-basic-rendering/introduction-to-ray-tracing
     def intersect(self, ray_origin:np.ndarray, ray_dir:np.ndarray) -> list:
         l = self.position - ray_origin
@@ -35,9 +40,13 @@ class sphere (ray_object):
         return [tca - thc, tca + thc]
 
 class plane (ray_object):
-    def __init__(self, position:np.ndarray, normal:np.ndarray) -> None:
+    def __init__(self, position:np.ndarray, normal:np.ndarray, **kwargs) -> None:
+        super().__init__()
         self.position = np.array(position, np.float32)
         self.normal = np.array(normal, np.float32)
+
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
     # http://lousodrome.net/blog/light/2020/07/03/intersection-of-a-ray-and-a-plane/
     def intersect(self, ray_origin: np.ndarray, ray_dir: np.ndarray) -> list:
@@ -48,9 +57,13 @@ class plane (ray_object):
         return [t]
 
 class aabb (ray_object):
-    def __init__(self, box_min:np.ndarray, box_max:np.ndarray) -> None:
+    def __init__(self, box_min:np.ndarray, box_max:np.ndarray, **kwargs) -> None:
+        super().__init__()
         self.box_min = np.array(box_min, dtype=np.float32)
         self.box_max = np.array(box_max, dtype=np.float32)
+
+        for key, value in kwargs.items():
+            setattr(self, key, value)
     
     # https://tavianator.com/2015/ray_box_nan.html
     # this one is crying for optimization
@@ -65,6 +78,11 @@ class aabb (ray_object):
             tmax = np.minimum(tmax, np.maximum(t1, t2))
         
         return [tmin, tmax] if tmax > max(tmin, 0.0) else []
+
+class light:
+    def __init__(self, position:np.ndarray, strength:float) -> None:
+        self.position = np.array(position, dtype=np.float32)
+        self.strength = strength
 
 if __name__ == "__main__":
     b = aabb([-1, -1, -1], [1, 1, 1])
