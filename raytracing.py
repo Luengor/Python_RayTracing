@@ -22,32 +22,36 @@ x_sines = np.array(np.sin([(x - size[0] * 0.5 + 0.5) * fov2px for x in range(siz
 y_sines = np.array(np.sin([-(y - size[1] * 0.5 + 0.5) * fov2px for y in range(size[1])]), dtype=np.float32)
 
 ## Main loop
+ray_origin = np.zeros(3, dtype=np.float32)
+ray_dir = np.zeros(3, dtype=np.float32)
+
 for y in range(size[1]):
     for x in range(size[0]):
         ## Calculate the ray
-        ray_origin = camera[0]
-        ray_dir = np.array(camera[1] + y_sines[y] * camera[2] + x_sines[x] * camera[3], dtype=np.float32)
-        ray_dir /= np.linalg.norm(ray_dir)
+        ray_origin[:] = camera[0]
+        ray_dir[:] = camera[1] + y_sines[y] * camera[2] + x_sines[x] * camera[3]
+        ray_dir[:] /= np.linalg.norm(ray_dir)
 
         ## Get all hits
-        # Each element of the hits array is: [Id of the object hit, [hit0, hit1, ...]]
+        # Each element of the hits array is: [Id of the object hit, hit "distance", hit position, hit normal]
         hits = []
         for o in range(len(objects)):
-            new_hits = objects[o].intersect(ray_origin, ray_dir)
-            if len(new_hits) > 0:
-                hits.append([o, new_hits])
+            new_hit = objects[o].intersect(ray_origin, ray_dir)
+            if new_hit:
+                hits.append([o, *new_hit])
         
         ## Draw sky color if no hits
-        if len(hits) == 0:
+        if not hits:
             image[y, x, :] = sky_color
             continue
 
         ## Sort the hits to only draw the closer one
-        hits.sort(key=lambda h: h[1][0], reverse=False)
+        hits.sort(key=lambda h: h[1], reverse=False)
 
         ## Check if the point is in shadow
-        ray_origin = ray_origin + ray_dir * (hits[0][1][0] - 0.05)
-        ray_dir = lights[0].position - ray_origin
+        ray_origin[:] = hits[0][2] + hits[0][3] * 5e-3  # Add a bit to the normal to prevent invalid intersections
+        ray_dir[:] = lights[0].position - ray_origin
+        ray_dir[:] /= np.linalg.norm(ray_dir)
 
         shadow = False
         for obj in objects:
@@ -56,8 +60,7 @@ for y in range(size[1]):
                 break
 
         ## Draw black-er color when in shadow
-        # Shadows are working weird, I think?
-        # In the first-shadows image, the red one shouldn't be all in shadow
+        # Shadows were broken. I didn't normalize the direction vector
         if shadow:
             image[y, x, :] = np.subtract(objects[hits[0][0]].color, [100, 100, 100])
         else:

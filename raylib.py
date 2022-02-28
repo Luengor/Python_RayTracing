@@ -16,7 +16,7 @@ class ray_object:
     def intersect(self, ray_origin:np.ndarray, ray_dir:np.ndarray) -> list:
         """
         Calculate if a ray intersects this object.
-        Returns an array with the hits. 
+        Returns an array with the hit and the normal. 
         """
         pass
 
@@ -37,7 +37,9 @@ class sphere (ray_object):
         d2 = np.dot(l, l) - tca * tca
         if (d2 > self.radius): return ([])
         thc = np.sqrt(self.radius - d2)
-        return [tca - thc, tca + thc]
+        hit_pos = ray_origin + ray_dir * (tca - thc)
+        hit_norm = hit_pos - self.position
+        return [tca - thc, hit_pos, hit_norm / np.linalg.norm(hit_norm)]
 
 class plane (ray_object):
     def __init__(self, position:np.ndarray, normal:np.ndarray, **kwargs) -> None:
@@ -54,7 +56,8 @@ class plane (ray_object):
         if (den == 0): return []
         t = np.dot((self.position - ray_origin), self.normal) / np.dot(ray_dir, self.normal)
         if (t < 0): return []
-        return [t]
+        hit_norm = self.normal * den
+        return [t, ray_origin + ray_dir * t, hit_norm / np.linalg.norm(hit_norm)]
 
 class aabb (ray_object):
     def __init__(self, box_min:np.ndarray, box_max:np.ndarray, **kwargs) -> None:
@@ -77,7 +80,7 @@ class aabb (ray_object):
             tmin = np.maximum(tmin, np.minimum(t1, t2))
             tmax = np.minimum(tmax, np.maximum(t1, t2))
         
-        return [tmin, tmax] if tmax > max(tmin, 0.0) else []
+        return [tmin, tmax] if tmax > max(tmin, 0.0) else []    # This isn't updated to add the normal
 
 class light:
     def __init__(self, position:np.ndarray, strength:float) -> None:
