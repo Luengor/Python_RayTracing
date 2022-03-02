@@ -1,69 +1,65 @@
 ## Imports
+from raylib import *
 import numpy as np
-import raylib
+import math
 import cv2
 
+## Constants
+SIZE = 1024, 1024
+FOV = 90
+NORMAL_BUMP = 2e-5
+
 ## Global variables
-size = 1024, 1024
-fov = 90    # It actually was broken, but I have no idea if this is correct now :)
-fov2px = np.tan(np.pi * 0.5 * fov / 180) / (size[0] - 1)
-image = np.zeros(shape=(size[1], size[0], 3), dtype=np.uint8)
+fov2px = math.tan(math.pi * 0.5 * FOV / 180) / (SIZE[0] - 1)
+image = np.zeros(shape=(SIZE[1], SIZE[0], 3), dtype=np.uint8)
 
 ## Scene variables
-# Where the vectors of the camera are: Position, Fordward, Up, Right
-camera = np.array([[0, 1, 0], [0, 0, 1], [0, 1, 0], [1, 0, 0]], dtype=np.float32)
-objects = [raylib.sphere([0.5, 1, 4], 0.2, color=[200, 100, 100]), raylib.sphere([-0.3, 1, 3], 0.01, color=[100, 100, 200])]
-lights = [raylib.light([-2, 1, 3], 1)]
+cam = camera(vector(0, 1, 0), vector(0, 0, 1), vector(0, 1, 0), vector(1, 0, 0))
+objects = [sphere(vector(0.5, 1, 3), 0.2, color=[200, 100, 100]),
+           sphere(vector(-0.5, 1, 3), 0.01, color=[100, 100, 200]),
+           plane(vector(0, 0, 0), vector(0, 1, 0), color=[110, 170, 110])]
+lights = [light(vector(0, 3, 3), 2)]
 sky_color = [50, 50, 50]
 
 ## Sines calculations
 # We actually only need half of them, as they can be reused
-x_sines = np.array(np.sin([(x - size[0] * 0.5 + 0.5) * fov2px for x in range(size[0])]), dtype=np.float32)
-y_sines = np.array(np.sin([-(y - size[1] * 0.5 + 0.5) * fov2px for y in range(size[1])]), dtype=np.float32)
+x_sines = [math.sin((x - SIZE[0] * 0.5 + 0.5) * fov2px) for x in range(SIZE[0])]
+y_sines = [math.sin(-(y - SIZE[1] * 0.5 + 0.5) * fov2px) for y in range(SIZE[1])]
 
 ## Main loop
-ray_origin = np.zeros(3, dtype=np.float32)
-ray_dir = np.zeros(3, dtype=np.float32)
-
-for y in range(size[1]):
-    for x in range(size[0]):
+for y in range(SIZE[1]):
+    for x in range(SIZE[0]):
         ## Calculate the ray
-        ray_origin[:] = camera[0]
-        ray_dir[:] = camera[1] + y_sines[y] * camera[2] + x_sines[x] * camera[3]
-        ray_dir[:] /= np.linalg.norm(ray_dir)
+        r = ray(cam.position, cam.fordward + cam.up*y_sines[y] + cam.right*x_sines[x])
 
-        ## Get all hits
-        # Each element of the hits array is: [Id of the object hit, hit "distance", hit position, hit normal]
-        hits = []
+        ## Get the closer hit
+        hit = rayhit(distance=math.inf)
+        hitter = -1
         for o in range(len(objects)):
-            new_hit = objects[o].intersect(ray_origin, ray_dir)
-            if new_hit:
-                hits.append([o, *new_hit])
+            new_hit = objects[o].intersect(r)
+            if new_hit.distance >= 0 and new_hit.distance < hit.distance:
+                hit = new_hit
+                hitter = o
         
         ## Draw sky color if no hits
-        if not hits:
+        if hitter == -1:
             image[y, x, :] = sky_color
             continue
 
-        ## Sort the hits to only draw the closer one
-        hits.sort(key=lambda h: h[1], reverse=False)
-
         ## Check if the point is in shadow
-        ray_origin[:] = hits[0][2] + hits[0][3] * 5e-3  # Add a bit to the normal to prevent invalid intersections
-        ray_dir[:] = lights[0].position - ray_origin
-        ray_dir[:] /= np.linalg.norm(ray_dir)
+        r = ray(hit.position + (hit.normal * NORMAL_BUMP))
+        r.direction = (lights[0].position - r.origin).normalize()
 
         shadow = False
         for obj in objects:
-            if len(obj.intersect(ray_origin, ray_dir)) > 0:
+            if obj.intersect(r).distance >= 0:
                 shadow = True
                 break
 
         ## Draw black-er color when in shadow
-        # Shadows were broken. I didn't normalize the direction vector
         if shadow:
-            image[y, x, :] = np.subtract(objects[hits[0][0]].color, [100, 100, 100])
+            image[y, x, :] = np.subtract(objects[hitter].color, [100, 100, 100])
         else:
-            image[y, x, :] = objects[hits[0][0]].color
+            image[y, x, :] = objects[hitter].color
 
 cv2.imwrite("something.png", image)

@@ -1,19 +1,142 @@
 # Imports
-import numpy as np
+from __future__ import annotations
+import math
 
 # Declarations
+class vector(): pass
+class rayhit(): pass
+class ray(): pass
 class ray_object(): pass
 class sphere(ray_object): pass
 class plane(ray_object): pass
-class aabb(ray_object): pass
 class light(): pass
+class camera(): pass
+
+# Small functions
+def div(a, b) -> float:
+    try:
+        return a / b
+    except ZeroDivisionError:
+        return (-1 * (a < 0)) * float('inf')
 
 # Classes
+class vector:
+    """
+    ## Custom class because it's faster and convenient
+    """
+    ## Seters
+    def __init__(self, x:float=0, y:float=0, z:float=0, mag:float=-1) -> None:
+        """
+            Initiates the vector
+            The mag variable is used internally to keep track of the magnitude
+            of the vector to reuse it whenever possible. So, don't touch / don't
+            give it a random value or calculations will fail.
+        """
+        self.x = x
+        self.y = y
+        self.z = z
+
+        self.mag = -1
+        """ The pre-computed magnitude. """
+
+    def set(self, v:vector) -> None:
+        """
+            Copy the values of another vector
+        """
+        self.__init__(v.x, v.y, v.z, v.mag)
+
+    ## Properties
+    @property
+    def magnitude(self) -> float:
+        """
+            The calculated magnitude of the vector. It can be reused with .mag
+        """
+        self.mag = math.sqrt(self.x*self.x + self.y*self.y + self.z*self.z)
+        return self.mag
+
+    @property
+    def magnitude2(self) -> float:
+        """
+            The squared magnitude of the vector.
+        """
+        return vector.dot(self, self)
+
+    ## Functions
+    def normalize(self) -> vector:
+        """
+            Normalizes the vector and returns it
+        """
+        if self.magnitude != 1:
+            if self.mag == 0:
+                self.x = math.inf
+                self.y = math.inf
+                self.z = math.inf
+            else:
+                self.x /= self.mag
+                self.y /= self.mag
+                self.z /= self.mag
+        return self
+    
+    def dot(v:vector, w:vector) -> float:
+        """
+            Calculates the dot product of 2 vectors.
+        """
+        return v.x*w.x + v.y*w.y + v.z*w.z
+
+    ## Overloads
+    def __add__(self, other) -> vector:
+        if isinstance(other, vector):
+            return vector(self.x + other.x, self.y + other.y, self.z + other.z)
+        elif isinstance(other, (int, float)):
+            return vector(self.x + other, self.y + other, self.z + other)
+    
+    def __sub__(self, other) -> vector: # duplicate code :(
+        if isinstance(other, vector):
+            return vector(self.x - other.x, self.y - other.y, self.z - other.z)
+        elif isinstance(other, (int, float)):
+            return vector(self.x - other, self.y - other, self.z - other)
+
+    def __mul__(self, other) -> vector:
+        if isinstance(other, vector):
+            return vector.dot(self, other)
+        elif isinstance(other, (int, float)):
+            return vector(self.x * other, self.y * other, self.z * other)
+    
+    def __truediv__(self, other) -> vector:
+        if isinstance(other, vector):
+            return vector(div(self.x, other.x), div(self.y, other.y), div(self.z, other.z))
+        elif isinstance(other, (int, float)):
+            return self * (1 / other)
+
+    def __getitem__(self, item:int) -> float:
+        return getattr(self, "xyz"[item])
+
+    def __str__(self) -> str:
+        return f"({self.x}, {self.y}, {self.z})"
+
+class rayhit():
+    def __init__(self, position:vector=None, normal:vector=None, distance:float = -1) -> None:
+        self.position = position
+        self.normal = normal
+        self.distance = distance
+    
+    def __str__(self) -> str:
+        return f"{self.position} {self.normal} {self.distance}"
+
+class ray():
+    def __init__(self, origin:vector=vector(), direction:vector=vector()) -> None:
+        self.origin = origin
+        self.direction = direction
+        self.direction.normalize()
+
+    def position_at(self, x:float) -> vector:
+        return (self.origin + (self.direction * x))
+
 class ray_object:
     def __init__(self) -> None:
         self.color = [255, 255, 255]
     
-    def intersect(self, ray_origin:np.ndarray, ray_dir:np.ndarray) -> list:
+    def intersect(self, r:ray) -> rayhit:
         """
         Calculate if a ray intersects this object.
         Returns an array with the hit and the normal. 
@@ -21,73 +144,59 @@ class ray_object:
         pass
 
 class sphere (ray_object):
-    def __init__(self, position:np.ndarray, radius:float, **kwargs) -> None:
+    def __init__(self, position:vector, radius:float, **kwargs) -> None:
         super().__init__()
-        self.position = np.array(position, np.float32)
+        self.position = position
         self.radius = radius
 
         for key, value in kwargs.items():
             setattr(self, key, value)
 
     # https://www.scratchapixel.com/code.php?id=3&origin=/lessons/3d-basic-rendering/introduction-to-ray-tracing
-    def intersect(self, ray_origin:np.ndarray, ray_dir:np.ndarray) -> list:
-        l = self.position - ray_origin
-        tca = np.dot(l, ray_dir)
-        if (tca < 0): return []
-        d2 = np.dot(l, l) - tca * tca
-        if (d2 > self.radius): return ([])
-        thc = np.sqrt(self.radius - d2)
-        hit_pos = ray_origin + ray_dir * (tca - thc)
-        hit_norm = hit_pos - self.position
-        return [tca - thc, hit_pos, hit_norm / np.linalg.norm(hit_norm)]
+    def intersect(self, r:ray) -> rayhit:
+        l = self.position - r.origin
+        tca = l * r.direction
+        if (tca < 0): return rayhit()
+        d2 = l*l - tca*tca
+        if (d2 > self.radius): return rayhit()
+        thc = math.sqrt(self.radius - d2)
+
+        hit = rayhit(r.position_at(tca - thc))
+        hit.normal = (hit.position - self.position).normalize()
+        hit.distance = (tca - thc)
+        return hit
 
 class plane (ray_object):
-    def __init__(self, position:np.ndarray, normal:np.ndarray, **kwargs) -> None:
+    def __init__(self, position:vector, normal:vector, **kwargs) -> None:
         super().__init__()
-        self.position = np.array(position, np.float32)
-        self.normal = np.array(normal, np.float32)
+        self.position = position
+        self.normal = normal
 
         for key, value in kwargs.items():
             setattr(self, key, value)
 
     # http://lousodrome.net/blog/light/2020/07/03/intersection-of-a-ray-and-a-plane/
-    def intersect(self, ray_origin: np.ndarray, ray_dir: np.ndarray) -> list:
-        den = np.dot(ray_dir, self.normal)
-        if (den == 0): return []
-        t = np.dot((self.position - ray_origin), self.normal) / np.dot(ray_dir, self.normal)
-        if (t < 0): return []
-        hit_norm = self.normal * den
-        return [t, ray_origin + ray_dir * t, hit_norm / np.linalg.norm(hit_norm)]
-
-class aabb (ray_object):
-    def __init__(self, box_min:np.ndarray, box_max:np.ndarray, **kwargs) -> None:
-        super().__init__()
-        self.box_min = np.array(box_min, dtype=np.float32)
-        self.box_max = np.array(box_max, dtype=np.float32)
-
-        for key, value in kwargs.items():
-            setattr(self, key, value)
-    
-    # https://tavianator.com/2015/ray_box_nan.html
-    # this one is crying for optimization
-    def intersect(self, ray_origin: np.ndarray, ray_dir: np.ndarray) -> list:
-        tmin, tmax = -np.Infinity, np.Infinity
-        
-        for i in range(3):
-            t1 = (self.box_min[i] - ray_origin[i]) * (np.divide(1, ray_dir[i]))
-            t2 = (self.box_max[i] - ray_origin[i]) * (np.divide(1, ray_dir[i]))
-
-            tmin = np.maximum(tmin, np.minimum(t1, t2))
-            tmax = np.minimum(tmax, np.maximum(t1, t2))
-        
-        return [tmin, tmax] if tmax > max(tmin, 0.0) else []    # This isn't updated to add the normal
+    def intersect(self, r:ray) -> rayhit:
+        den = r.direction * self.normal
+        if (den == 0): return rayhit()
+        t = div((self.position - r.origin) * self.normal, r.direction * self.normal)
+        if (t < 0): return rayhit()
+        hit = rayhit(r.position_at(t), self.normal, t)
+        return hit
 
 class light:
-    def __init__(self, position:np.ndarray, strength:float) -> None:
-        self.position = np.array(position, dtype=np.float32)
+    def __init__(self, position:vector, strength:float) -> None:
+        self.position = position
         self.strength = strength
 
-if __name__ == "__main__":
-    b = aabb([-1, -1, -1], [1, 1, 1])
-    print(b.intersect([-3, 0, 0], [1, 0, 0]))
+class camera:
+    def __init__(self, position:vector, fordward:vector=vector(), up:vector=vector(), right:vector=vector()) -> None:
+        self.position = position
+        self.fordward = fordward
+        self.up = up
+        self.right = right
 
+
+if __name__ == "__main__":
+    v = vector(1, 2, 3)
+    print(v / 2)

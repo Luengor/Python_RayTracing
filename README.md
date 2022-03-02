@@ -3,8 +3,8 @@ I literally have no idea what I am doing. I just hit my keyboard until something
    
 The idea is to (eventually) use the numba library to execute most of the code from the gpu. That way I can hide my bad coding abilities with the power ___of parallel computing___.
    
-This is what I have for now (2022-02-28):
-<br><img title="shadows-2" src="out/second-shadows.png" width="512" height="512">
+This is what I have for now (2022-03-03):
+<br><img title="shadows-2" src="out/third-shadows.png" width="512" height="512">
 <br><br>
 
 Also, I am using/used this:  
