@@ -18,7 +18,7 @@ cam = camera(vector(0, 1, 0), vector(0, 0, 1), vector(0, 1, 0), vector(1, 0, 0))
 objects = [sphere(vector(0.5, 1, 3), 0.2, color=[200, 100, 100]),
            sphere(vector(-0.5, 1, 3), 0.01, color=[100, 100, 200]),
            plane(vector(0, 0, 0), vector(0, 1, 0), color=[110, 170, 110])]
-lights = [light(vector(0, 3, 3), 2)]
+lights = [light(vector(0, 3, 3), 2), light(vector(-2, 1, 3), 1)]
 sky_color = [50, 50, 50]
 
 ## Sines calculations
@@ -46,20 +46,23 @@ for y in range(SIZE[1]):
             image[y, x, :] = sky_color
             continue
 
-        ## Check if the point is in shadow
+        ## Lighting
+        color = np.array([0, 0, 0], dtype=np.int16)
         r = ray(hit.position + (hit.normal * NORMAL_BUMP))
-        r.direction = (lights[0].position - r.origin).normalize()
 
-        shadow = False
-        for obj in objects:
-            if obj.intersect(r).distance >= 0:
-                shadow = True
-                break
-
-        ## Draw black-er color when in shadow
-        if shadow:
-            image[y, x, :] = np.subtract(objects[hitter].color, [100, 100, 100])
-        else:
-            image[y, x, :] = objects[hitter].color
-
-cv2.imwrite("something.png", image)
+        for l in range(len(lights)):
+            r.direction = (lights[l].position - r.origin).normalize()
+            r.max_squared_distance = (lights[l].position - r.origin).magnitude2
+            
+            shadow = False
+            for o in range(len(objects)):
+                if objects[o].intersect(r).distance >= 0:
+                    shadow = True
+                    break
+            if not shadow:
+                color += objects[hitter].color
+        
+        ## Draw the point
+        image[y, x, :] = np.clip(color, 0, 255)
+        
+cv2.imwrite("double_shadows.png", image)

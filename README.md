@@ -3,11 +3,24 @@ I literally have no idea what I am doing. I just hit my keyboard until something
    
 The idea is to (eventually) use the numba library to execute most of the code from the gpu. That way I can hide my bad coding abilities with the power ___of parallel computing___.
    
-This is what I have for now (2022-03-03):
-<br><img title="shadows-2" src="out/third-shadows.png" width="512" height="512">
+### This is what I have for now (2022-03-04):
+<img title="Took 25.2 seconds to render" src="out/double-shadows.png" width="512" height="512">
 <br><br>
 
-Also, I am using/used this:  
+### TODO:
+* Diffuse and Specular shading
+* Better shadows
+* More primitives (Box, finite plane...)
+* Optimization
+* Scene class
+* ___Numba___
+
+### Maybe...?
+* Anti-aliasing
+* Model support
+<br><br>
+
+### Also, I am using/used this:  
 https://tavianator.com/index.html  
 https://www.scratchapixel.com/index.php  
 http://lousodrome.net/blog/light/2020/07/03/intersection-of-a-ray-and-a-plane/

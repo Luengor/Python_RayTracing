@@ -124,10 +124,11 @@ class rayhit():
         return f"{self.position} {self.normal} {self.distance}"
 
 class ray():
-    def __init__(self, origin:vector=vector(), direction:vector=vector()) -> None:
+    def __init__(self, origin:vector=vector(), direction:vector=vector(), max_squared_distance:float=math.inf) -> None:
         self.origin = origin
         self.direction = direction
         self.direction.normalize()
+        self.max_squared_distance = max_squared_distance
 
     def position_at(self, x:float) -> vector:
         return (self.origin + (self.direction * x))
@@ -159,11 +160,13 @@ class sphere (ray_object):
         if (tca < 0): return rayhit()
         d2 = l*l - tca*tca
         if (d2 > self.radius): return rayhit()
-        thc = math.sqrt(self.radius - d2)
 
-        hit = rayhit(r.position_at(tca - thc))
+        thc = math.sqrt(self.radius - d2)
+        dis = (tca - thc)
+        if (dis*dis > r.max_squared_distance): return rayhit()
+        hit = rayhit(r.position_at(dis))
         hit.normal = (hit.position - self.position).normalize()
-        hit.distance = (tca - thc)
+        hit.distance = dis
         return hit
 
 class plane (ray_object):
@@ -181,6 +184,8 @@ class plane (ray_object):
         if (den == 0): return rayhit()
         t = div((self.position - r.origin) * self.normal, r.direction * self.normal)
         if (t < 0): return rayhit()
+
+        if (t*t > r.max_squared_distance): return rayhit()
         hit = rayhit(r.position_at(t), self.normal, t)
         return hit
 
