@@ -5,7 +5,7 @@ import math
 import cv2
 
 ## Constants
-SIZE = 1024, 1024
+SIZE = 1280, 720
 FOV = 90
 NORMAL_BUMP = 2e-5
 
@@ -15,11 +15,11 @@ image = np.zeros(shape=(SIZE[1], SIZE[0], 3), dtype=np.uint8)
 
 ## Scene variables
 cam = camera(vector(0, 1, 0), vector(0, 0, 1), vector(0, 1, 0), vector(1, 0, 0))
-objects = [sphere(vector(0.5, 1, 3), 0.2, color=[200, 100, 100]),
-           sphere(vector(-0.5, 1, 3), 0.01, color=[100, 100, 200]),
-           plane(vector(0, 0, 0), vector(0, 1, 0), color=[110, 170, 110])]
-lights = [light(vector(0, 3, 3), 2), light(vector(-2, 1, 3), 1)]
-sky_color = [50, 50, 50]
+objects = [sphere(vector(-1.2, 1, 5), 0.8, color=[255, 100, 255], diffuse_coeff=1.5),
+           sphere(vector(1.2, 1, 5), 0.8, color=[100, 255, 255], shading=ray_object.SHADING_SPECULAR, specular_coeff=2.5, specular_p=2),
+           plane(vector(0, 0, 0), vector(0, 1, 0), color=[200, 200, 200], shading=ray_object.SHADING_NONE)]
+lights = [light(vector(0, 2, 2), 3)]
+sky_color = [200, 200, 200]
 
 ## Sines calculations
 # We actually only need half of them, as they can be reused
@@ -60,9 +60,23 @@ for y in range(SIZE[1]):
                     shadow = True
                     break
             if not shadow:
-                color += objects[hitter].color
-        
+                light_intensity = lights[l].strength / r.max_squared_distance
+
+                match objects[hitter].shading:
+                    case ray_object.SHADING_NONE:
+                        color = objects[hitter].color
+
+                    case ray_object.SHADING_DIFFUSE:
+                        ld = objects[hitter].diffuse_coeff * light_intensity * max(0, hit.normal*r.direction)
+                        color += [int(c * ld) for c in objects[hitter].color]
+                        
+                    case ray_object.SHADING_SPECULAR:
+                        camera_header = (cam.position - hit.position).normalize()
+                        h = (camera_header + r.direction) / ((camera_header + r.direction).magnitude)
+                        ls = objects[hitter].specular_coeff * light_intensity * math.pow(max(0, hit.normal * h), objects[hitter].specular_p)
+                        color += [int(c * ls) for c in objects[hitter].color]
+
         ## Draw the point
         image[y, x, :] = np.clip(color, 0, 255)
         
-cv2.imwrite("double_shadows.png", image)
+cv2.imwrite("shading.png", image)

@@ -134,8 +134,17 @@ class ray():
         return (self.origin + (self.direction * x))
 
 class ray_object:
+    # Constants
+    SHADING_NONE = 0
+    SHADING_DIFFUSE = 1
+    SHADING_SPECULAR = 2
+
     def __init__(self) -> None:
         self.color = [255, 255, 255]
+        self.shading = ray_object.SHADING_DIFFUSE
+        self.diffuse_coeff = 1
+        self.specular_coeff = 1
+        self.specular_p = 1
     
     def intersect(self, r:ray) -> rayhit:
         """
