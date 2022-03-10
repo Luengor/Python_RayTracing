@@ -14,9 +14,12 @@ class Ray(): pass
 class RayObject(): pass
 class Sphere(RayObject): pass
 class Plane(RayObject): pass
+# Lights
 class Light(): pass
-class Camera(): pass
+class PointLight(Light): pass
+class DirectionalLight(Light): pass
 # Others
+class Camera(): pass
 class Scene(): pass
 class Surface(): pass
 
@@ -239,8 +242,24 @@ class Light:
     """
         Container for lights position and strength
     """
+    LIGHT_DIRECTIONAL = 0
+    LIGHT_POINT = 1
+
+    def __init__(self, light_type:int) -> None:
+        self.type = light_type
+
+
+class PointLight (Light):
     def __init__(self, position:Vector, strength:float) -> None:
+        super().__init__(Light.LIGHT_POINT)
         self.position = position
+        self.strength = strength
+
+
+class DirectionalLight (Light):
+    def __init__(self, direction:Vector, strength:float) -> None:
+        super().__init__(Light.LIGHT_DIRECTIONAL)
+        self.direction = direction.normalize()
         self.strength = strength
 
 
@@ -289,9 +308,14 @@ class Camera:
         light_ray = Ray(hit.position + (hit.normal * self.normal_bump))
 
         for l in range(len(self.world.lights)):
-            light_ray.direction = (self.world.lights[l].position - light_ray.origin).normalize()
-            light_ray.max_squared_distance = (self.world.lights[l].position - light_ray.origin).magnitude2
+            if self.world.lights[l].type == Light.LIGHT_POINT: 
+                light_ray.direction = (self.world.lights[l].position - light_ray.origin).normalize()
+                light_ray.max_squared_distance = (self.world.lights[l].position - light_ray.origin).magnitude2
+            else:
+                light_ray.direction = self.world.lights[l].direction * -1
+                light_ray.max_squared_distance = float('inf')
             
+
             # Loop through all lights to check if we are in complete shadow
             # Never mind, I am just dumb
             shadow = False
@@ -302,7 +326,11 @@ class Camera:
             
             # If the point isn't in shadow, calculate the lighting
             if not shadow:
-                light_intensity = self.world.lights[l].strength / light_ray.max_squared_distance
+                if self.world.lights[l].type == Light.LIGHT_POINT:
+                    light_intensity = self.world.lights[l].strength / light_ray.max_squared_distance
+                else:
+                    light_intensity = self.world.lights[l].strength
+                
                 surf = self.world.objects[hitter].surface
                 match surf.shading:
                     case Surface.SHADING_NONE:
