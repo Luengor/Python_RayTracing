@@ -75,6 +75,7 @@ class Vector:
     def list(self) -> List[int]:
         return [self.x, self.y, self.z]
 
+
     ## Functions
     def normalize(self) -> Vector:
         """
@@ -97,6 +98,11 @@ class Vector:
         """
         return v.x*w.x + v.y*w.y + v.z*w.z
 
+    def rgb(self) -> None:
+        self.x = min(self.x, 255)
+        self.y = min(self.y, 255)
+        self.z = min(self.z, 255)
+
     ## Overloads
     def __add__(self, other) -> Vector:
         if isinstance(other, Vector):
@@ -112,12 +118,16 @@ class Vector:
         elif isinstance(other, (int, float)):
             return Vector(self.x - other, self.y - other, self.z - other)
 
-    def __mul__(self, other) -> Vector:
+    def __mul__(self, other):
         if isinstance(other, Vector):
             return Vector.dot(self, other)
         elif isinstance(other, (int, float)):
             return Vector(self.x * other, self.y * other, self.z * other)
     
+    def __rmul__(self, other):
+        return self * other
+
+
     def __truediv__(self, other) -> Vector:
         if isinstance(other, Vector):
             return Vector(div(self.x, other.x), div(self.y, other.y), div(self.z, other.z))
@@ -249,13 +259,14 @@ class Camera:
         self.fov = 90
         self.size = [1280, 720]
         self.normal_bump:float=2e-5
+        self.reflection_limit = 1
         self.set(**kwargs)
 
     def set(self, **kwargs) -> None:
         for key, value in kwargs.items():
             setattr(self, key, value)
     
-    def cast(self, r:Ray) -> List[int, int, int]:
+    def cast(self, light_ray:Ray, reflection:int=1) -> Vector:
         """
             Casts a ray and returns a list containing the color of the point
         """
@@ -264,7 +275,7 @@ class Camera:
         hit = RayHit(distance=math.inf)
         hitter = -1
         for o in range(len(self.world.objects)):
-            new_hit = self.world.objects[o].intersect(r)
+            new_hit = self.world.objects[o].intersect(light_ray)
             if new_hit.distance >= 0 and new_hit.distance < hit.distance:
                 hit = new_hit
                 hitter = o
@@ -275,23 +286,23 @@ class Camera:
             return color
 
         ## Lighting
-        r = Ray(hit.position + (hit.normal * self.normal_bump))
+        light_ray = Ray(hit.position + (hit.normal * self.normal_bump))
 
         for l in range(len(self.world.lights)):
-            r.direction = (self.world.lights[l].position - r.origin).normalize()
-            r.max_squared_distance = (self.world.lights[l].position - r.origin).magnitude2
+            light_ray.direction = (self.world.lights[l].position - light_ray.origin).normalize()
+            light_ray.max_squared_distance = (self.world.lights[l].position - light_ray.origin).magnitude2
             
             # Loop through all lights to check if we are in complete shadow
             # Never mind, I am just dumb
             shadow = False
             for o in range(len(self.world.objects)):
-                if self.world.objects[o].intersect(r).distance >= 0:
+                if self.world.objects[o].intersect(light_ray).distance >= 0:
                     shadow = True
                     break
             
             # If the point isn't in shadow, calculate the lighting
             if not shadow:
-                light_intensity = self.world.lights[l].strength / r.max_squared_distance
+                light_intensity = self.world.lights[l].strength / light_ray.max_squared_distance
                 surf = self.world.objects[hitter].surface
                 match surf.shading:
                     case Surface.SHADING_NONE:
@@ -301,17 +312,26 @@ class Camera:
                         color = surf.color * light_intensity * surf.flat_coeff
 
                     case Surface.SHADING_DIFFUSE:
-                        ld = surf.diffuse_coeff * light_intensity * max(0, hit.normal*r.direction)
+                        ld = surf.diffuse_coeff * light_intensity * max(0, hit.normal*light_ray.direction)
                         color += [int(c * ld) for c in surf.color]
                         
                     case Surface.SHADING_SPECULAR:
                         # This works weird when the light is really close
                         camera_header = (self.position - hit.position).normalize()
-                        h = (camera_header + r.direction) / ((camera_header + r.direction).magnitude)
+                        h = (camera_header + light_ray.direction) / ((camera_header + light_ray.direction).magnitude)
                         ls = surf.specular_coeff * light_intensity * math.pow(max(0, hit.normal * h), surf.specular_p)
                         color += [int(c * ls) for c in surf.color]
+                    
+                    case Surface.SHADING_REFLECTIVE:
+                        if reflection >= 0:
+                            ld = surf.diffuse_coeff * light_intensity * max(0, hit.normal*light_ray.direction)
+                            camera_header = (self.position - hit.position).normalize()
+                            r = (hit.normal * camera_header) * hit.normal * 2  - camera_header
+                            relfect = self.cast(Ray(hit.position + hit.normal * self.normal_bump, r), reflection - 1)
+                            color += (relfect * ld * surf.reflective_coeff)
         
-        return list(map(lambda c: int(min(c, 255)), color.list))
+        color.rgb()
+        return color
 
     def render(self) -> np.ndarray:
         """
@@ -329,7 +349,7 @@ class Camera:
         for y in range(self.size[1]):
             for x in range(self.size[0]):
                 r = Ray(self.position, self.fordward + self.up*y_sines[y] + self.right*x_sines[x])
-                image[y, x, :] = list(self.cast(r))
+                image[y, x, :] = list(self.cast(r, self.reflection_limit))
         return image
 
 
@@ -351,6 +371,7 @@ class Surface:
     SHADING_FLAT = 1
     SHADING_DIFFUSE = 2
     SHADING_SPECULAR = 3
+    SHADING_REFLECTIVE = 4
 
     def __init__(self, color:Vector=Vector(255, 255, 255), shading:int=0, **kwargs) -> None:
         self.color = color
@@ -359,6 +380,7 @@ class Surface:
         self.diffuse_coeff = 1
         self.specular_coeff = 1
         self.specular_p = 1
+        self.reflective_coeff = 1
 
         for key, value in kwargs.items():
             setattr(self, key, value)
