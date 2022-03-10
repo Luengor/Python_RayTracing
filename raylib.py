@@ -282,7 +282,7 @@ class Camera:
             r.max_squared_distance = (self.world.lights[l].position - r.origin).magnitude2
             
             # Loop through all lights to check if we are in complete shadow
-            ## This doesn't work as it sould
+            # Never mind, I am just dumb
             shadow = False
             for o in range(len(self.world.objects)):
                 if self.world.objects[o].intersect(r).distance >= 0:
@@ -297,11 +297,15 @@ class Camera:
                     case Surface.SHADING_NONE:
                         color = surf.color
 
+                    case Surface.SHADING_FLAT:
+                        color = surf.color * light_intensity * surf.flat_coeff
+
                     case Surface.SHADING_DIFFUSE:
                         ld = surf.diffuse_coeff * light_intensity * max(0, hit.normal*r.direction)
                         color += [int(c * ld) for c in surf.color]
                         
                     case Surface.SHADING_SPECULAR:
+                        # This works weird when the light is really close
                         camera_header = (self.position - hit.position).normalize()
                         h = (camera_header + r.direction) / ((camera_header + r.direction).magnitude)
                         ls = surf.specular_coeff * light_intensity * math.pow(max(0, hit.normal * h), surf.specular_p)
@@ -344,12 +348,14 @@ class Scene:
 class Surface:
     # Constants
     SHADING_NONE = 0
-    SHADING_DIFFUSE = 1
-    SHADING_SPECULAR = 2
+    SHADING_FLAT = 1
+    SHADING_DIFFUSE = 2
+    SHADING_SPECULAR = 3
 
     def __init__(self, color:Vector=Vector(255, 255, 255), shading:int=0, **kwargs) -> None:
         self.color = color
         self.shading = shading
+        self.flat_coeff = 1
         self.diffuse_coeff = 1
         self.specular_coeff = 1
         self.specular_p = 1

@@ -3,13 +3,13 @@ I literally have no idea what I am doing. I just hit my keyboard until something
    
 The idea is to (eventually) use the numba library to execute most of the code from the gpu. That way I can hide my bad coding abilities with the power ___of parallel computing___.
    
-### This is what I have for now (2022-03-09):
-<img title="Took 14.69 seconds to render" src="out/shading.png" width="640" height="360">
+### This is what I have for now (2022-03-10):
+<img title="Took 15.3 seconds to render" src="out/flat_shading.png" width="640" height="360">
 <br><br>
 
 ### TODO:
 * ~~Diffuse and Specular shading~~
-* ~~Better~~ Fix shadows
+* ~~Better~~ ~~Fix~~ Better shadows
 * More primitives (Box, finite plane...)
 * ~~Optimization~~
 * ~~Scene class~~
