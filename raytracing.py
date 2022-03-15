@@ -15,7 +15,7 @@ world.objects += [
     Plane(Vector(0, 0, 0), Vector(0, 1, 0), Surface(Vector(200, 200, 200), Surface.SHADING_REFLECTIVE))
 ]
 world.lights += [DirectionalLight(Vector(-0.4, -1 , 1), 0.8)]
-world.camera.set(position=Vector(0, 0.7, 0), fordward=Vector(0, 0, 1), up=Vector(0, 1, 0), right=Vector(1, 0, 0), size=SIZE, fov=FOV)
+world.camera.set(position=Vector(0, 0.7, 0), fordward=Vector(0, 0, 1), up=Vector(0, 1, 0), right=Vector(1, 0, 0), size=SIZE, fov=FOV, sample_size=4)
 
 # Render
-cv2.imwrite("directional_lights.png", world.camera.render())
+cv2.imwrite("SSAA.png", world.camera.render())

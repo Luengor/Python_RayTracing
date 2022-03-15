@@ -1,10 +1,10 @@
 # A very crude implementataion of RayTracing in Python
 I literally have no idea what I am doing. I just hit my keyboard until something works :)
    
-The idea is to (eventually) use the numba library to execute most of the code from the gpu. That way I can hide my bad coding abilities with the power ___of parallel computing___.
+The idea is to (eventually) use the numba / taichi library to execute most of the code from the gpu. That way I can hide my bad coding abilities with the power ___of parallel computing___.
    
-### This is what I have for now (2022-03-10):
-<img title="Took 19.0 seconds to render" src="out/directional_lights.png" width="640" height="360">
+### This is what I have for now (15-03-2022):
+<img title="Took <a long time> to render" src="out/SSAA.png" width="640" height="360">
 <br><br>
 
 ### TODO:
@@ -13,10 +13,10 @@ The idea is to (eventually) use the numba library to execute most of the code fr
 * More primitives (Box, finite plane...)
 * ~~Optimization~~
 * ~~Scene class~~
-*  ___Numba___   
+*  ___Numba___ / ___Taichi___
 
 ### Maybe...?
-* Anti-aliasing
+* ~~Anti-aliasing~~
 * Model support
 <br><br>
 

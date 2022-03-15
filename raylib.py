@@ -268,18 +268,28 @@ class Camera:
         Main rendering class
     """
     def __init__(self, world:Scene, position:Vector=Vector(), fordward:Vector=Vector(),
-            up:Vector=Vector(), right:Vector=Vector(), **kwargs) -> None:
+            up:Vector=Vector(), right:Vector=Vector(), fov:float=90, size:List[int, int] = [1280, 720],
+            sample_size:int=1, normal_bump:float=2e-5, reflection_limit:int=1) -> None:
+        """
+            :param fov: Field of view of the camera
+            :param size: Dimensions of the image generated in rendering
+            :param sample_size: Number of samples for SSAA ( the number of
+            samples will be sample_size^2 )
+            :param normal_bump: Magnitude of a normal vector applied before the
+            ray calculations to prevent false hits
+            :param reflection_limit: Max number of reflections allowed
+
+        """
         self.world = world
         self.position = position
         self.fordward = fordward
         self.up = up
         self.right = right
-        
-        self.fov = 90
-        self.size = [1280, 720]
-        self.normal_bump:float=2e-5
-        self.reflection_limit = 1
-        self.set(**kwargs)
+        self.fov = fov
+        self.size = size
+        self.sample_size = sample_size
+        self.normal_bump = normal_bump
+        self.reflection_limit = reflection_limit
 
     def set(self, **kwargs) -> None:
         for key, value in kwargs.items():
@@ -287,7 +297,8 @@ class Camera:
     
     def cast(self, light_ray:Ray, reflection:int=1) -> Vector:
         """
-            Casts a ray and returns a list containing the color of the point
+            Casts a ray and returns a list containing the color of the point.
+            (You souldn't use this)
         """
         color = Vector()
         ## Get the closer hit
@@ -363,21 +374,35 @@ class Camera:
 
     def render(self) -> np.ndarray:
         """
-            Renders the scene casting a series of rays according to the fov and size
-            variables.
-            Returns a numpy array with the image data
+            Renders the scene casting a series of rays according to the fov
+            and size variables.
+            :returns np.ndarray: Returns a numpy array with the image data.
         """
         # Pre calcs
         image = np.zeros(shape=(self.size[1], self.size[0], 3), dtype=np.uint8)
         fov2px = math.tan(math.pi * 0.5 * self.fov / 180) / (self.size[0] - 1)
-        x_sines = [math.sin((x - self.size[0] * 0.5 + 0.5) * fov2px) for x in range(self.size[0])]
-        y_sines = [math.sin(-(y - self.size[1] * 0.5 + 0.5) * fov2px) for y in range(self.size[1])]
-
-        # render loop
+        offset = 1 / (self.sample_size)
+        
+        # Main render loop
         for y in range(self.size[1]):
             for x in range(self.size[0]):
-                r = Ray(self.position, self.fordward + self.up*y_sines[y] + self.right*x_sines[x])
-                image[y, x, :] = list(self.cast(r, self.reflection_limit))
+                # Color init
+                color = Vector()
+                # Range through the samples
+                for s in range(self.sample_size ** 2):
+                    # Give an offset depending on the sample (basically rendering
+                    # the image at a higher quality and then downscaling)
+                    sx = s % self.sample_size
+                    sy = s // self.sample_size
+                    x_pos = (((x - offset*(.5 * (self.sample_size - 1))) + offset*sx) - self.size[0] * 0.5 + 0.5)
+                    y_pos = (((y - offset*(.5 * (self.sample_size - 1))) + offset*sy) - self.size[1] * 0.5 + 0.5)
+                    x_sine = (math.sin(+x_pos * fov2px))
+                    y_sine = (math.sin(-y_pos * fov2px))
+                    # Cast the ray and add the color
+                    r = Ray(self.position, self.fordward + self.up*y_sine + self.right*x_sine)
+                    color += self.cast(r, self.reflection_limit)
+                
+                image[y, x, :] = list(color / self.sample_size**2)
         return image
 
 
