@@ -10,10 +10,12 @@ class Vector(): pass
 # Ray
 class RayHit(): pass
 class Ray(): pass
+# Shapes
+class Shape(): pass
+class Sphere(Shape): pass
+class Plane(Shape): pass
 # Objects
 class RayObject(): pass
-class Sphere(RayObject): pass
-class Plane(RayObject): pass
 # Lights
 class Light(): pass
 class PointLight(Light): pass
@@ -173,35 +175,42 @@ class Ray:
         return (self.origin + (self.direction * x))
 
 
-class RayObject:
-    """
-        Base class for all objects to render
-    """
+class Shape:
     def __init__(self) -> None:
-        self.position = Vector()
-        self.surface = Surface()
-    
-    def intersect(self, r:Ray) -> RayHit:
+        self.container:RayObject = None
+        pass
+
+    def intersect(self, ray:Ray) -> RayHit:
         """
         Calculate if a ray intersects this object.
-        Returns a RayHit
+        :returns RayHit:
         """
         pass
 
 
-class Sphere (RayObject):
+class RayObject:
     """
-        Sphere Ray Object.
+        Base class for all objects to render
     """
-    def __init__(self, position:Vector, radius:float, s:Surface) -> None:
-        super().__init__()
+    def __init__(self, position:Vector, shape:Shape, surface:Surface) -> None:
         self.position = position
+        self.surface = surface
+        self.shape = shape
+        self.shape.container = self
+
+
+class Sphere (Shape):
+    """
+        Sphere shape.
+    """
+    def __init__(self, radius:float) -> None:
+        super().__init__()
         self.radius = radius
-        self.surface = s
 
     # https://www.scratchapixel.com/code.php?id=3&origin=/lessons/3d-basic-rendering/introduction-to-ray-tracing
     def intersect(self, r:Ray) -> RayHit:
-        l = self.position - r.origin
+        pos = self.container.position
+        l = pos - r.origin
         tca = l * r.direction
         if (tca < 0): return RayHit()
         d2 = l*l - tca*tca
@@ -211,26 +220,25 @@ class Sphere (RayObject):
         dis = (tca - thc)
         if (dis*dis > r.max_squared_distance): return RayHit()
         hit = RayHit(r.position_at(dis))
-        hit.normal = (hit.position - self.position).normalize()
+        hit.normal = (hit.position - pos).normalize()
         hit.distance = dis
         return hit
 
 
-class Plane (RayObject):
+class Plane (Shape):
     """
-        Infinite plane ray object
+        Infinite plane shape
     """
-    def __init__(self, position:Vector, normal:Vector, s:Surface) -> None:
+    def __init__(self, normal:Vector) -> None:
         super().__init__()
-        self.position = position
         self.normal = normal
-        self.surface = s
 
     # http://lousodrome.net/blog/light/2020/07/03/intersection-of-a-ray-and-a-plane/
     def intersect(self, r:Ray) -> RayHit:
+        pos = self.container.position
         den = r.direction * self.normal
         if (den == 0): return RayHit()
-        t = div((self.position - r.origin) * self.normal, r.direction * self.normal)
+        t = div((pos - r.origin) * self.normal, r.direction * self.normal)
         if (t < 0): return RayHit()
 
         if (t*t > r.max_squared_distance): return RayHit()
@@ -305,7 +313,7 @@ class Camera:
         hit = RayHit(distance=math.inf)
         hitter = -1
         for o in range(len(self.world.objects)):
-            new_hit = self.world.objects[o].intersect(light_ray)
+            new_hit = self.world.objects[o].shape.intersect(light_ray)
             if new_hit.distance >= 0 and new_hit.distance < hit.distance:
                 hit = new_hit
                 hitter = o
@@ -331,7 +339,7 @@ class Camera:
             # Never mind, I am just dumb
             shadow = False
             for o in range(len(self.world.objects)):
-                if self.world.objects[o].intersect(light_ray).distance >= 0:
+                if self.world.objects[o].shape.intersect(light_ray).distance >= 0:
                     shadow = True
                     break
             
@@ -441,3 +449,4 @@ class Surface:
     def set(self, **kwargs) -> None:
         for key, value in kwargs.items():
             setattr(self, key, value)
+
