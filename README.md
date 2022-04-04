@@ -1,11 +1,19 @@
 # A very crude implementataion of RayTracing in Python
 I literally have no idea what I am doing. I just hit my keyboard until something works :)
    
-The idea is to (eventually) use the numba / taichi library to execute most of the code from the gpu. That way I can hide my bad coding abilities with the power ___of parallel computing___.
+The idea is to (eventually) use the numba / taichi / multiprocessing library so I can hide my bad coding abilities with the power of ___parallel computing___.
    
 ### This is what I have for now (15-03-2022):
 <img title="Took <a long time> to render" src="out/SSAA.png" width="640" height="360">
 <br><br>
+
+### Dependencies
+Package       | Version
+--------------|----------
+python        | 3.10.3
+opencv-python | 4.5.5.64
+numpy         | 1.22.3
+<br>
 
 ### TODO:
 * ~~Diffuse and Specular shading~~
@@ -13,7 +21,7 @@ The idea is to (eventually) use the numba / taichi library to execute most of th
 * More primitives (Box, finite plane...)
 * ~~Optimization~~
 * ~~Scene class~~
-*  ___Numba___ / ___Taichi___
+*  ___Numba___ / ___Taichi___ / _multiprocessing_
 
 ### Maybe...?
 * ~~Anti-aliasing~~

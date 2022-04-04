@@ -1,3 +1,4 @@
+#! rayvenv/bin/python3.10
 # Imports
 from raylib import *
 import cv2
@@ -19,3 +20,4 @@ world.camera.set(position=Vector(0, 0.7, 0), fordward=Vector(0, 0, 1), up=Vector
 
 # Render
 cv2.imwrite("SSAA.png", world.camera.render())
+
